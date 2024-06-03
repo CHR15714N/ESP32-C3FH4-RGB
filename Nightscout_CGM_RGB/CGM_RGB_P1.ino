@@ -21,7 +21,7 @@ const char* apiKey = "YourApiKey";
 
 Adafruit_NeoPixel strip(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
 
-// Global variables for current color and brightness
+// Global variables for the current color and brightness
 uint8_t currentRed = 0;
 uint8_t currentGreen = 0;
 uint8_t currentBlue = 0;
@@ -31,13 +31,13 @@ uint8_t savedGreen = 0;
 uint8_t savedBlue = 0;
 bool buttonPressed = false;
 
-unsigned long lastUpdate = 0; // Timer variable for update
+unsigned long lastUpdate = 0; // Time variable for update
 
 void setup() {
   Serial.begin(115200);
   while (!Serial) { ; }
 
-  pinMode(BUTTON_PIN, INPUT_PULLUP); // Configure button pin
+  pinMode(BUTTON_PIN, INPUT_PULLUP); // Configure the button pin
 
   strip.begin();
   strip.show();
@@ -62,32 +62,34 @@ void setup() {
 
 void loop() {
   unsigned long currentTime = millis();
-  if (WiFi.status() != WL_CONNECTED) {
-    patternWifiNotConnected();
-  } else if (currentTime - lastUpdate >= 60000) { // Check if a minute has passed
+  if (currentTime - lastUpdate >= 60000) { // Check if a minute has passed
     acquireColorAndRunPattern();
     lastUpdate = currentTime;
   }
 
-  if (digitalRead(BUTTON_PIN) == LOW && !buttonPressed) {
-    buttonPressed = true;
-    delay(50); // Debounce delay
-    while (digitalRead(BUTTON_PIN) == LOW) {
-      // Wait for button release
-    }
-    runAnimationWithButtonPress();
+  if (WiFi.status() != WL_CONNECTED) {
+    patternWifiNotConnected();
   } else {
-    buttonPressed = false;
+    if (digitalRead(BUTTON_PIN) == LOW && !buttonPressed) {
+      buttonPressed = true;
+      delay(50); // Debounce delay
+      while (digitalRead(BUTTON_PIN) == LOW) {
+        // Wait for the button to be released
+      }
+      runAnimationWithButtonPress();
+    } else {
+      buttonPressed = false;
+    }
   }
 
-  delay(100); // Short delay to avoid overloading the loop
+  delay(100); // Small delay to avoid overloading the loop
 }
 
 void applyCurrentSettings() {
   for (int i = 0; i < LED_COUNT; i++) {
     strip.setPixelColor(i, strip.Color(currentRed, currentGreen, currentBlue));
   }
-  strip.setBrightness(currentBrightness); // Set brightness
+  strip.setBrightness(currentBrightness); // Set the brightness
   strip.show();
 }
 
@@ -126,7 +128,7 @@ void patternWifiNotConnected() {
   }
 }
 
-// Functions for startup pattern
+// Functions for the startup pattern
 void fadeFromBlack(uint8_t wait) {
   for (int j = 0; j <= BRIGHTNESS; j++) {
     strip.setBrightness(j);
@@ -179,7 +181,7 @@ void acquireColorAndRunPattern() {
       float glucoseValue = doc[0]["sgv"];
       const char* direction = doc[0]["direction"];
 
-      // Set base color based on glucose values
+      // Set the base color based on glucose values
       if (glucoseValue < 60) {
         setColor(70, 0, 255); // Purple
       } else if (glucoseValue < 70) {
@@ -200,7 +202,7 @@ void acquireColorAndRunPattern() {
         setColor(255, 0, 255); // Magenta
       }
 
-      // Apply lighting patterns based on glucose direction
+      // Apply the lighting patterns based on glucose direction
       if (strcmp(direction, "DoubleUp") == 0) {
         patternDoubleUp();
       } else if (strcmp(direction, "SingleUp") == 0) {
@@ -358,99 +360,102 @@ void drawFlatArrow(int offset, uint32_t color) {
 }
 
 void runAnimation(int glucoseValue, String trend) {
-  uint32_t bgColor = strip.Color(currentRed, currentGreen, currentBlue); // Use current background color
-  uint32_t contrastColor;
+    uint32_t bgColor = strip.Color(currentRed, currentGreen, currentBlue); // Use the current background color
+    uint32_t contrastColor;
 
-  if (currentRed == 70 && currentGreen == 0 && currentBlue == 255) {
-    contrastColor = strip.Color(70, 70, 70); // Gray for Purple
-  } else if (currentRed == 0 && currentGreen == 0 && currentBlue == 255) {
-    contrastColor = strip.Color(70, 70, 70); // Gray for Blue
-  } else if (currentRed == 0 && currentGreen == 70 && currentBlue == 255) {
-    contrastColor = strip.Color(0, 0, 0); // Black for Cyan
-  } else if (currentRed == 0 && currentGreen == 255 && currentBlue == 0) {
-    contrastColor = strip.Color(0, 0, 0); // Black for Green
-  } else if (currentRed == 70 && currentGreen == 255 && currentBlue == 0) {
-    contrastColor = strip.Color(0, 0, 0); // Black for Green-Yellow
-  } else if (currentRed == 255 && currentGreen == 255 && currentBlue == 0) {
-    contrastColor = strip.Color(0, 0, 0); // Black for Yellow
-  } else if (currentRed == 255 && currentGreen == 70 && currentBlue == 0) {
-    contrastColor = strip.Color(0, 0, 0); // Black for Orange
-  } else if (currentRed == 255 && currentGreen == 0 && currentBlue == 0) {
-    contrastColor = strip.Color(70, 70, 70); // Gray for Red
-  } else if (currentRed == 255 && currentGreen == 0 && currentBlue == 255) {
-    contrastColor = strip.Color(70, 70, 70); // Gray for Magenta
-  }
-
-  // Clear screen for 100 ms before animation
-  clearMatrix(bgColor);
-  delay(100);
-
-  // Convert glucose value to string and draw numbers
-  String glucoseStr = String(glucoseValue);
-  int offset = 5;
-  for (int i = 0; i < glucoseStr.length(); i++) {
-    int num = glucoseStr.charAt(i) - '0';
-    drawNumber(num, offset, contrastColor);
-    offset += 4; // Space between numbers
-  }
-
-  // Draw trend after numbers
-  if (trend == "DoubleDown") {
-    drawDoubleDownArrow(offset, contrastColor);
-  } else if (trend == "Flat") {
-    drawFlatArrow(offset, contrastColor);
-  } else if (trend == "SingleUp") {
-    drawSingleUpArrow(offset, contrastColor);
-  } else if (trend == "DoubleUp") {
-    drawDoubleUpArrow(offset, contrastColor);
-  } else if (trend == "FortyFiveUp") {
-    drawFortyFiveUpArrow(offset, contrastColor);
-  } else if (trend == "SingleDown") {
-    drawSingleDownArrow(offset, contrastColor);
-  } else if (trend == "FortyFiveDown") {
-    drawFortyFiveDownArrow(offset, contrastColor);
-  } // Add other conditions for other trends if necessary
-
-  // Show animation
-  for (int i = 5; i >= -offset - 8; i--) {
-    clearMatrix(bgColor);
-    
-    // Redraw numbers
-    int tempOffset = i;
-    for (int j = 0; j < glucoseStr.length(); j++) {
-      int num = glucoseStr.charAt(j) - '0';
-      drawNumber(num, tempOffset, contrastColor);
-      tempOffset += 4; // Space between numbers
+    if (currentRed == 70 && currentGreen == 0 && currentBlue == 255) {
+        contrastColor = strip.Color(70, 70, 70); // Gray for Purple
+    } else if (currentRed == 0 && currentGreen == 0 && currentBlue == 255) {
+        contrastColor = strip.Color(70, 70, 70); // Gray for Blue
+    } else if (currentRed == 0 && currentGreen == 70 && currentBlue == 255) {
+        contrastColor = strip.Color(0, 0, 0); // Black for Cyan
+    } else if (currentRed == 0 && currentGreen == 255 && currentBlue == 0) {
+        contrastColor = strip.Color(0, 0, 0); // Black for Green
+    } else if (currentRed == 70 && currentGreen == 255 && currentBlue == 0) {
+        contrastColor = strip.Color(0, 0, 0); // Black for Yellow-Green
+    } else if (currentRed == 255 && currentGreen == 255 && currentBlue == 0) {
+        contrastColor = strip.Color(0, 0, 0); // Black for Yellow
+    } else if (currentRed == 255 && currentGreen == 70 && currentBlue == 0) {
+        contrastColor = strip.Color(0, 0, 0); // Black for Orange
+    } else if (currentRed == 255 && currentGreen == 0 && currentBlue == 0) {
+        contrastColor = strip.Color(70, 70, 70); // Gray for Red
+    } else if (currentRed == 255 && currentGreen == 0 && currentBlue == 255) {
+        contrastColor = strip.Color(0, 0, 0); // Black for Magenta
     }
 
-    // Redraw trend
+    // Clear the screen for 100 ms before the animation
+    clearMatrix(bgColor);
+    delay(100);
+
+    // Convert the glucose value to a string and draw the numbers
+    String glucoseStr = String(glucoseValue);
+    int offset = 5;
+    for (int i = 0; i < glucoseStr.length(); i++) {
+        int num = glucoseStr.charAt(i) - '0';
+        drawNumber(num, offset, contrastColor);
+        offset += 4; // Space between numbers
+    }
+
+    // Draw the trend after the numbers
     if (trend == "DoubleDown") {
-      drawDoubleDownArrow(tempOffset, contrastColor);
+        drawDoubleDownArrow(offset, contrastColor);
     } else if (trend == "Flat") {
-      drawFlatArrow(tempOffset, contrastColor);
+        drawFlatArrow(offset, contrastColor);
     } else if (trend == "SingleUp") {
-      drawSingleUpArrow(tempOffset, contrastColor);
+        drawSingleUpArrow(offset, contrastColor);
     } else if (trend == "DoubleUp") {
-      drawDoubleUpArrow(tempOffset, contrastColor);
+        drawDoubleUpArrow(offset, contrastColor);
     } else if (trend == "FortyFiveUp") {
-      drawFortyFiveUpArrow(tempOffset, contrastColor);
+        drawFortyFiveUpArrow(offset, contrastColor);
     } else if (trend == "SingleDown") {
-      drawSingleDownArrow(tempOffset, contrastColor);
+        drawSingleDownArrow(offset, contrastColor);
     } else if (trend == "FortyFiveDown") {
-      drawFortyFiveDownArrow(tempOffset, contrastColor);
+        drawFortyFiveDownArrow(offset, contrastColor);
     } // Add other conditions for other trends if necessary
 
-    strip.show();
-    delay(150); // Scrolling speed
-  }
+    // Show the animation
+    for (int i = 5; i >= -offset - 8; i--) {
+        // Draw only the pixels that change state
+        for (int j = 0; j < strip.numPixels(); j++) {
+            strip.setPixelColor(j, bgColor);
+        }
 
-  // Clear screen for 100 ms after animation
-  clearMatrix(bgColor);
-  delay(100);
+        // Redraw the numbers
+        int tempOffset = i;
+        for (int j = 0; j < glucoseStr.length(); j++) {
+            int num = glucoseStr.charAt(j) - '0';
+            drawNumber(num, tempOffset, contrastColor);
+            tempOffset += 4; // Space between numbers
+        }
+
+        // Redraw the trend
+        if (trend == "DoubleDown") {
+            drawDoubleDownArrow(tempOffset, contrastColor);
+        } else if (trend == "Flat") {
+            drawFlatArrow(tempOffset, contrastColor);
+        } else if (trend == "SingleUp") {
+            drawSingleUpArrow(tempOffset, contrastColor);
+        } else if (trend == "DoubleUp") {
+            drawDoubleUpArrow(tempOffset, contrastColor);
+        } else if (trend == "FortyFiveUp") {
+            drawFortyFiveUpArrow(tempOffset, contrastColor);
+        } else if (trend == "SingleDown") {
+            drawSingleDownArrow(tempOffset, contrastColor);
+        } else if (trend == "FortyFiveDown") {
+            drawFortyFiveDownArrow(tempOffset, contrastColor);
+        } // Add other conditions for other trends if necessary
+
+        strip.show();
+        delay(150); // Scroll speed
+    }
+
+    // Clear the screen for 100 ms after the animation
+    clearMatrix(bgColor);
+    delay(100);
 }
 
 void patternFlat() {
-  delay(5000); // 5 second delay
+  delay(5000); // 5-second delay
 }
 
 void patternDoubleUp() {
